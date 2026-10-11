@@ -11,11 +11,14 @@ public struct CitySnapshot: Codable, Sendable, Equatable {
     public var host: String
     public var takenAt: Date
     public var buildings: [BuildingSnapshot]
+    /// Optional so older paired apps and saved snapshots remain readable.
+    public var archive: CityArchive?
 
-    public init(host: String, takenAt: Date, buildings: [BuildingSnapshot]) {
+    public init(host: String, takenAt: Date, buildings: [BuildingSnapshot], archive: CityArchive? = nil) {
         self.host = host
         self.takenAt = takenAt
         self.buildings = buildings
+        self.archive = archive
     }
 
     public var waitingCount: Int { buildings.reduce(0) { $0 + $1.waitingCount } }
@@ -30,6 +33,8 @@ public struct BuildingSnapshot: Codable, Sendable, Equatable, Identifiable {
     /// Which facade the building wears.
     public var style: Int
     public var floors: [FloorSnapshot]
+    public var purpose: String?
+    public var previewURL: String?
 
     public init(id: UUID, name: String, title: String?, style: Int, floors: [FloorSnapshot]) {
         self.id = id
@@ -81,6 +86,9 @@ public struct FloorSnapshot: Codable, Sendable, Equatable, Identifiable {
     public var outcome: String?
     /// Jobs waiting behind the one running.
     public var queued: Int?
+    public var configuration: CityFloorConfiguration?
+    public var history: [CityHistorySnapshot]?
+    public var totals: CityTotalsSnapshot?
 
     public init(id: UUID, name: String, hires: [String], colours: [String: Int] = [:], request: String?, phase: Phase, startedAt: Date?, managerActive: Bool = false,
                 handoffs: [HandoffSnapshot] = [], captions: [String: String] = [:], skills: [String: [String]] = [:],

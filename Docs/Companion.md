@@ -97,3 +97,20 @@ Decided with the first version; change them in one place.
 | Command lifetime | 15 min | `CommandGate.lifetime` |
 
 The phone plays the office's sounds under the ambient audio session, so the silent switch mutes them. Its icon is the Mac icon's artwork on a full square, which iOS rounds itself.
+
+## Durable same-network copy (NativeSync)
+
+Local Bonjour/TLS transport now comes from HamishNativeLibrary 0.3.x. Existing keys, QR codes,
+PSK derivation and signed command checks remain compatible. Connections retry after interruptions
+even when discovery results are unchanged. The Mac republishes a heartbeat while quiet.
+
+The phone privately saves a host/key-bound snapshot so reopening offline retains the last received
+city. More → Synced information shows portable floor configuration, queue text, floor history,
+all-time totals and the Mac's retained job journal. New fields are optional for older peers/caches.
+The host's existing journal retention still applies; this is not an unlimited raw CLI transcript archive.
+Mac repository files, credentials, runtime permissions and local paths remain on the Mac. Commands
+are never queued offline; the Mac verifies current pending requests before accepting an approval.
+
+Keep both apps open on a reachable local network, with the Mac awake. iOS background suspension
+prevents continuous closed-app sync. See the library's docs/LOCAL_SYNC.md for protocol/security details.
+An actual paired phone still needs permission, background/foreground and sleep/wake checks before release.

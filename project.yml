@@ -8,7 +8,7 @@ options:
 packages:
   HamishNativeLibrary:
     url: https://github.com/Slaymish/HamishNativeLibrary
-    minorVersion: 0.2.0
+    minorVersion: 0.3.1
   OfficeCore:
     path: Packages/OfficeCore
   Sparkle:
@@ -43,7 +43,7 @@ targets:
         buildPhase: resources
     dependencies:
       - package: HamishNativeLibrary
-        products: [NativeCore, NativeSecurity, NativeUI]
+        products: [NativeCore, NativeSecurity, NativeUI, NativeSync]
       - package: OfficeCore
       - package: Sparkle
       - package: SwiftTerm
@@ -113,7 +113,7 @@ targets:
         buildPhase: resources
     dependencies:
       - package: HamishNativeLibrary
-        products: [NativeCore, NativeSecurity]
+        products: [NativeCore, NativeSecurity, NativeSync]
       - package: OfficeCore
     info:
       path: Companion/Info.plist

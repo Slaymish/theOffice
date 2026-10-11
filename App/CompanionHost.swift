@@ -19,6 +19,8 @@ final class CompanionHost {
     private(set) var pairing: PairingRecord? = LinkKeychain.load()
     /// Phones connected over the local network now, by name.
     private(set) var phones: [String] = []
+    private(set) var syncStatus: String?
+    private(set) var syncFailure: String?
 
     @ObservationIgnored private let listener = LinkListener()
     @ObservationIgnored private var links: [ObjectIdentifier: (link: LinkConnection, device: String?)] = [:]
@@ -26,6 +28,7 @@ final class CompanionHost {
     @ObservationIgnored private var published: CitySnapshot?
     @ObservationIgnored private var pending: Task<Void, Never>?
     @ObservationIgnored private var watching = false
+    @ObservationIgnored private var heartbeatTask: Task<Void, Never>?
     #if COMPANION_CLOUD
     @ObservationIgnored private let cloud = CloudLink()
     @ObservationIgnored private var cloudTask: Task<Void, Never>?
@@ -55,15 +58,30 @@ final class CompanionHost {
         guard isOn, !MainWindow.offscreen else { return }
         let record = pairing ?? makePairing()
         listener.onConnection = { [weak self] link in self?.adopt(link) }
+        listener.onStatus = { [weak self] in self?.syncStatus = $0 }
         listener.start(key: record.key, name: Self.hostName, hostID: record.hostID)
         if !watching {
             watching = true
             watch()
         }
+        if heartbeatTask == nil {
+            heartbeatTask = Task { [weak self] in
+                while !Task.isCancelled {
+                    do { try await Task.sleep(for: .seconds(Self.heartbeat)) } catch { return }
+                    guard let self, self.isOn else { return }
+                    self.listener.retry()
+                    if var snapshot = self.published {
+                        snapshot.takenAt = .now
+                        for entry in self.links.values where entry.device != nil { entry.link.sendLatest(.snapshot(snapshot)) }
+                    }
+                }
+            }
+        }
         startCloud()
     }
 
     func stop() {
+        heartbeatTask?.cancel(); heartbeatTask = nil
         listener.stop()
         links.values.forEach { $0.link.close() }
         links = [:]
@@ -112,8 +130,8 @@ final class CompanionHost {
     }
 
     static func snapshot(of city: CityStore) -> CitySnapshot {
-        CitySnapshot(host: hostName, takenAt: .distantPast, buildings: city.buildings.map { building in
-            BuildingSnapshot(id: building.id, name: building.name, title: building.title, style: building.style, floors: building.floors.map { floor in
+        var result = CitySnapshot(host: hostName, takenAt: .distantPast, buildings: city.buildings.map { building in
+            var buildingSnapshot = BuildingSnapshot(id: building.id, name: building.name, title: building.title, style: building.style, floors: building.floors.map { floor in
                 var snapshot = if let session = city.sessions[floor.id] {
                     session.mirror.snapshot(id: floor.id, name: floor.name, hires: floor.hires,
                                             colours: Dictionary(session.catalogueNames.enumerated().map { ($1, $0) }) { first, _ in first },
@@ -126,9 +144,29 @@ final class CompanionHost {
                 snapshot.unseenSince = floor.unseenSince
                 snapshot.outcome = floor.lastOutcome
                 snapshot.queued = floor.queued.map(\.count)
+                snapshot.configuration = CityFloorConfiguration(provider: floor.provider?.rawValue, model: floor.model,
+                    budgetUSD: floor.budgetUSD, purpose: floor.purpose, presetID: floor.presetID, branch: floor.branch,
+                    allowedServers: floor.allowedServers, allowedSkills: floor.allowedSkills, lastRequest: floor.lastRequest,
+                    queuedRequests: floor.queued?.map(\.text) ?? [])
+                snapshot.history = (city.sessions[floor.id]?.history ?? FloorHistory.load(floor.id)).map {
+                    CityHistorySnapshot(id: $0.id, date: $0.date, job: $0.job, kind: $0.kind.rawValue, title: $0.title, text: $0.text)
+                }
+                if let totals = city.totals[floor.id] {
+                    snapshot.totals = CityTotalsSnapshot(jobs: totals.jobs, succeeded: totals.succeeded, cancelled: totals.cancelled,
+                        spendUSD: totals.spendUSD, tokens: totals.tokens, duration: totals.duration)
+                }
                 return snapshot
             })
+            buildingSnapshot.purpose = building.purpose
+            buildingSnapshot.previewURL = building.previewURL
+            return buildingSnapshot
         })
+        result.archive = CityArchive(jobs: city.journal.map {
+            CityJobSnapshot(id: $0.id, date: $0.date, request: $0.request, hires: $0.hires, costUSD: $0.costUSD,
+                budgetUSD: $0.budgetUSD, duration: $0.duration, files: $0.files, outcome: $0.outcome,
+                buildingID: $0.buildingID, floorID: $0.floorID, tokens: $0.tokens)
+        })
+        return result
     }
 
     private func publish(_ snapshot: CitySnapshot) {
@@ -136,12 +174,14 @@ final class CompanionHost {
         published = snapshot
         var stamped = snapshot
         stamped.takenAt = .now
-        for (_, entry) in links where entry.device != nil { entry.link.send(.snapshot(stamped)) }
+        for (_, entry) in links where entry.device != nil { entry.link.sendLatest(.snapshot(stamped)) }
     }
 
     // MARK: Local network
 
     private func adopt(_ link: LinkConnection) {
+        guard links.count < 8 else { return link.close() }
+        link.onFailure = { [weak self] in self?.syncFailure = $0 }
         let key = ObjectIdentifier(link)
         links[key] = (link, nil)
         link.onMessage = { [weak self, weak link] message in
@@ -159,6 +199,7 @@ final class CompanionHost {
         switch message {
         case .hello(let version, let device):
             guard version == CitySnapshot.protocolVersion else { return link.close() }
+            syncFailure = nil
             links[ObjectIdentifier(link)]?.device = device
             phones = links.values.compactMap(\.device).sorted()
             if var snapshot = published {

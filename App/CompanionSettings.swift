@@ -12,7 +12,7 @@ struct CompanionSettings: View {
         Section {
             Toggle("Let The City on your iPhone follow and answer jobs", isOn: $host.isOn)
         } footer: {
-            Text("Your phone sees every project’s floors and can answer questions, approve or deny once, start jobs through Reception and cancel them. It can’t change permissions or always-allow anything.")
+            Text("Your phone keeps an offline copy of every project’s floors, job history and shared configuration. Keep your Mac awake and both apps open on the same network to refresh it. It can answer questions, approve or deny once, start jobs through Reception and cancel them. It can’t change permissions or always-allow anything.")
                 .font(.caption).foregroundStyle(Color(Palette.muted))
         }
         if host.isOn, let code = host.code {
@@ -37,6 +37,8 @@ struct CompanionSettings: View {
                 }
             }
             Section("On this network") {
+                if let status = host.syncStatus { Text(status).foregroundStyle(Color(Palette.muted)) }
+                if let failure = host.syncFailure { Text(failure).foregroundStyle(Color(Palette.muted)) }
                 if host.phones.isEmpty {
                     Text("No phone connected").foregroundStyle(Color(Palette.muted))
                 } else {

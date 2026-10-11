@@ -1,6 +1,6 @@
 # Shared native library
 
-The Mac app, iPhone companion and OfficeCore consume HamishNativeLibrary 0.2.x from its public GitHub
+The Mac app, iPhone companion and OfficeCore consume HamishNativeLibrary 0.3.x from its public GitHub
 repository. Dependency versions live in project.yml and Packages/OfficeCore/Package.swift. Xcode's generated
 project remains ignored; OfficeCore's Package.resolved records its tested version.
 

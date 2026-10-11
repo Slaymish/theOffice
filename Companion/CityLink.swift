@@ -1,3 +1,4 @@
+import CryptoKit
 import Network
 import Observation
 import OfficeCore
@@ -23,6 +24,8 @@ final class CityLink {
     @ObservationIgnored private let browser = LinkBrowser()
     @ObservationIgnored private var link: LinkConnection?
     @ObservationIgnored private var active = false
+    @ObservationIgnored private var retryTask: Task<Void, Never>?
+    @ObservationIgnored private let cache = CompanionCache(url: DataFiles.url("companion-cache.json"))
     @ObservationIgnored private var transcripts: [UUID: CheckedContinuation<String, Error>] = [:]
     #if COMPANION_CLOUD
     @ObservationIgnored private let cloud = CloudLink()
@@ -45,6 +48,7 @@ final class CityLink {
         stop()
         pairing = record
         snapshot = nil
+        try? cache.clear()
         start()
         return true
     }
@@ -54,6 +58,7 @@ final class CityLink {
         LinkKeychain.clear()
         pairing = nil
         snapshot = nil
+        try? cache.clear()
     }
 
     // MARK: Connecting
@@ -62,12 +67,24 @@ final class CityLink {
     func start() {
         guard let pairing, !active else { return }
         active = true
+        if snapshot == nil {
+            do { snapshot = try cache.load(hostID: pairing.hostID, keyFingerprint: Data(SHA256.hash(data: pairing.key))) }
+            catch { notice = "The saved city copy could not be read. It was left untouched; reconnect to your Mac to refresh it." }
+        }
+        retryTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, self.active else { return }
+                if self.link == nil { self.browser.retry() }
+                do { try await Task.sleep(for: Self.cloudInterval) } catch { return }
+            }
+        }
         browser.start(hostID: pairing.hostID, key: pairing.key) { [weak self] endpoint in self?.connect(to: endpoint) }
         startCloud()
     }
 
     func stop() {
         active = false
+        retryTask?.cancel(); retryTask = nil
         browser.stop()
         link?.close()
         link = nil
@@ -81,13 +98,15 @@ final class CityLink {
 
     private func connect(to endpoint: NWEndpoint) {
         guard link == nil, let pairing else { return }
-        let link = LinkConnection(NWConnection(to: endpoint, using: LinkTLS.parameters(key: pairing.key)))
+        let link = LinkConnection(NWConnection(to: endpoint, using: LinkTLS.parameters(key: pairing.key)), maximumLength: LinkFramer.maximumLength)
         self.link = link
         link.onReady = { [weak self, weak link] in
+            guard let self, self.active, self.link === link else { return }
             link?.send(.hello(version: CitySnapshot.protocolVersion, device: UIDevice.current.name))
-            self?.route = .local
+            self.route = .local
         }
         link.onMessage = { [weak self] message in self?.received(message) }
+        link.onFailure = { [weak self] in self?.notice = $0 }
         link.onClose = { [weak self, weak link] in
             guard let self, self.link === link else { return }
             self.link = nil
@@ -158,8 +177,12 @@ final class CityLink {
             notice = "Your Mac has a different version of The City. Update both to the same version."
             return
         }
-        if let current = snapshot, new.takenAt < current.takenAt { return }
+        if route != .local, let current = snapshot, new.takenAt < current.takenAt { return }
         snapshot = new
+        if let pairing {
+            do { try cache.save(new, hostID: pairing.hostID, keyFingerprint: Data(SHA256.hash(data: pairing.key))) }
+            catch { notice = "The city updated, but its offline copy could not be saved. Check this device's free storage." }
+        }
     }
 
     private func settle(_ receipt: CommandReceipt) {

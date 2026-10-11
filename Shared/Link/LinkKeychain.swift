@@ -8,18 +8,24 @@ enum LinkKeychain {
     private static let service = "nz.hamish.TheCity.link"
     private static let store = KeychainStore(service: service, accessibility: .afterFirstUnlockThisDeviceOnly)
 
+    private static var isolated: Bool {
+        TestHost.isActive || ["-render-preview", "-render-icon", "-render-reel"].contains { CommandLine.arguments.contains($0) }
+    }
     static func load() -> PairingRecord? {
+        guard !isolated else { return nil }
         guard let data = try? store.read(account: "pairing") else { return nil }
         return try? NativeJSON.decode(PairingRecord.self, from: data, dates: .deferredToDate)
     }
 
     static func save(_ record: PairingRecord) {
+        guard !isolated else { return }
         guard let data = try? NativeJSON.encode(record, dates: .deferredToDate, formatting: []) else { return }
         // Updating an existing item retains the old pairing if the new write fails.
         try? store.write(data, account: "pairing")
     }
 
     static func clear() {
+        guard !isolated else { return }
         try? store.remove(account: "pairing")
     }
 }

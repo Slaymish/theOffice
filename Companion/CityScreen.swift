@@ -20,6 +20,7 @@ struct CityScreen: View {
     @State private var asking = false
     @State private var composing = false
     @State private var confirmingStop = false
+    @State private var showingSyncedInformation = false
     @State private var lastDrag: CGSize = .zero
     @State private var lastMagnification: CGFloat = 1
     @Environment(\.colorScheme) private var colorScheme
@@ -71,6 +72,7 @@ struct CityScreen: View {
                 QuestionsSheet(link: link, building: building, onlyFloor: city.floorID)
             }
         }
+        .sheet(isPresented: $showingSyncedInformation) { SyncedInformationView(snapshot: link.snapshot) }
         .sheet(isPresented: $composing) {
             if let building = city.building { NewJobSheet(link: link, building: building) }
         }
@@ -136,6 +138,7 @@ struct CityScreen: View {
             Spacer()
             Menu {
                 if let host = link.pairing?.host { Text("Paired with \(host)") }
+                Button("Synced information") { showingSyncedInformation = true }
                 Button("Unpair", role: .destructive) { link.unpair() }
             } label: {
                 Image(systemName: "ellipsis").padding().glassEffect(in: Circle())

@@ -1,3 +1,4 @@
+import NativeCore
 import AppKit
 import Observation
 import SwiftUI
@@ -28,8 +29,7 @@ final class DictationStore {
     var isAvailable: Bool { state == .ready }
 
     static var base: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("The City/Dictation", isDirectory: true)
+        (try! AppDirectories.applicationSupportURL(appID: "The City")).appendingPathComponent("Dictation", isDirectory: true)
     }
 
     static func folder(for variant: String) -> URL {

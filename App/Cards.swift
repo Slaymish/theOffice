@@ -2,6 +2,7 @@ import AppKit
 import OfficeCore
 import QuickLook
 import SwiftUI
+import NativeUI
 
 struct AnswerDraft {
     var picked: [String: Set<String>] = [:]
@@ -423,8 +424,7 @@ struct EndCard: View {
                 Text(title).eyebrow()
                 Spacer()
                 Button("Copy") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(message, forType: .string)
+                    NativeClipboard.copy(message)
                 }
                 .buttonStyle(PillButtonStyle(kind: .secondary))
                 Button("Done") { reading = false }
@@ -496,8 +496,7 @@ struct HistorySheet: View {
                 Text("History · \(controller.displayTitle)").eyebrow()
                 Spacer()
                 Button("Copy") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(transcript, forType: .string)
+                    NativeClipboard.copy(transcript)
                 }
                 .buttonStyle(PillButtonStyle(kind: .secondary))
                 Button("Done") { controller.showHistory = false }
@@ -593,8 +592,7 @@ struct FileRow: View {
                 ShareLink(item: url)
             }
             Button("Copy Path") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(path, forType: .string)
+                NativeClipboard.copy(path)
             }
         }
         .help(exists ? "Double-click to open, Space for Quick Look" : path)

@@ -1,11 +1,12 @@
 import Foundation
+import NativeCore
 
 /// Carries data over from when the app was called The Office (`nz.hamish.theoffice`).
 enum LegacyData {
     static func migrate() {
         let files = FileManager.default
-        let support = files.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let old = support.appendingPathComponent("The Office"), new = support.appendingPathComponent("The City")
+        let old = try! AppDirectories.applicationSupportURL(appID: "The Office")
+        let new = try! AppDirectories.applicationSupportURL(appID: "The City")
         if files.fileExists(atPath: old.path), !files.fileExists(atPath: new.path) {
             try? files.moveItem(at: old, to: new)
         }

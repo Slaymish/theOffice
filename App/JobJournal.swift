@@ -1,4 +1,5 @@
 import Foundation
+import NativeCore
 
 struct JobRecord: Codable, Identifiable, Equatable {
     var id: UUID
@@ -64,7 +65,7 @@ struct JobTotals: Codable, Equatable {
 
     /// The first launch with totals starts them from whatever the journal still holds.
     static func load(seed journal: [JobRecord]) -> [UUID: JobTotals] {
-        if let totals = DataFiles.load([UUID: JobTotals].self, from: url, decoder: JSONDecoder()) { return totals }
+        if let totals = DataFiles.load([UUID: JobTotals].self, from: url, decoder: NativeJSON.decoder(dates: .deferredToDate)) { return totals }
         return journal.reduce(into: [:]) { totals, job in
             guard let floor = job.floorID else { return }
             totals[floor, default: JobTotals()].add(isNew: true, outcome: job.outcome, replacing: nil, costUSD: job.costUSD ?? 0,
@@ -72,7 +73,7 @@ struct JobTotals: Codable, Equatable {
         }
     }
 
-    static func save(_ totals: [UUID: JobTotals]) { DataFiles.save(totals, to: url, encoder: JSONEncoder()) }
+    static func save(_ totals: [UUID: JobTotals]) { DataFiles.save(totals, to: url, encoder: NativeJSON.encoder(dates: .deferredToDate, formatting: [])) }
 }
 
 /// Jobs on a set of floors: today's from the journal, all-time from the running totals.

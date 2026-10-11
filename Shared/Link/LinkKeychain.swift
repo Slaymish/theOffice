@@ -1,35 +1,26 @@
 import Foundation
 import OfficeCore
-import Security
+import NativeCore
+import NativeSecurity
 
 /// Keeps the pairing in the Keychain on both devices: the link key, and which Mac it belongs to.
 enum LinkKeychain {
     private static let service = "nz.hamish.TheCity.link"
+    private static let store = KeychainStore(service: service, accessibility: .afterFirstUnlockThisDeviceOnly)
 
     static func load() -> PairingRecord? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
-            kSecAttrAccount as String: "pairing", kSecReturnData as String: true,
-        ]
-        var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess, let data = item as? Data else { return nil }
-        return try? JSONDecoder().decode(PairingRecord.self, from: data)
+        guard let data = try? store.read(account: "pairing") else { return nil }
+        return try? NativeJSON.decode(PairingRecord.self, from: data, dates: .deferredToDate)
     }
 
     static func save(_ record: PairingRecord) {
-        guard let data = try? JSONEncoder().encode(record) else { return }
-        clear()
-        let item: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
-            kSecAttrAccount as String: "pairing", kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
-        ]
-        SecItemAdd(item as CFDictionary, nil)
+        guard let data = try? NativeJSON.encode(record, dates: .deferredToDate, formatting: []) else { return }
+        // Updating an existing item retains the old pairing if the new write fails.
+        try? store.write(data, account: "pairing")
     }
 
     static func clear() {
-        SecItemDelete([kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
-                       kSecAttrAccount as String: "pairing"] as CFDictionary)
+        try? store.remove(account: "pairing")
     }
 }
 

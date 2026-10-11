@@ -1,4 +1,5 @@
 import Foundation
+import NativeCore
 import OfficeCore
 
 /// One bare Haiku request on a Claude account, with no tools, servers, settings or saved session.
@@ -28,6 +29,6 @@ enum Haiku {
     /// With a schema, the result text is the JSON the schema describes.
     static func ask<Reply: Decodable>(_ reply: Reply.Type, prompt: String, system: String, schema: String, configDirectory: URL?) async -> Reply? {
         guard let text = await ask(prompt, system: system, schema: schema, configDirectory: configDirectory) else { return nil }
-        return try? JSONDecoder().decode(Reply.self, from: Data(text.utf8))
+        return try? NativeJSON.decode(Reply.self, from: Data(text.utf8), dates: .deferredToDate)
     }
 }

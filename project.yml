@@ -6,6 +6,9 @@ options:
     iOS: "26.0"
   createIntermediateGroups: true
 packages:
+  HamishNativeLibrary:
+    url: https://github.com/Slaymish/HamishNativeLibrary
+    minorVersion: 0.2.0
   OfficeCore:
     path: Packages/OfficeCore
   Sparkle:
@@ -39,6 +42,8 @@ targets:
         type: folder
         buildPhase: resources
     dependencies:
+      - package: HamishNativeLibrary
+        products: [NativeCore, NativeSecurity, NativeUI]
       - package: OfficeCore
       - package: Sparkle
       - package: SwiftTerm
@@ -107,6 +112,8 @@ targets:
         type: folder
         buildPhase: resources
     dependencies:
+      - package: HamishNativeLibrary
+        products: [NativeCore, NativeSecurity]
       - package: OfficeCore
     info:
       path: Companion/Info.plist

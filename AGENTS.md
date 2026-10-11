@@ -14,3 +14,7 @@ change its runtime provider or GitHub automation as part of agent setup alone.
 
 Use the Slaymish GitHub identity for this personal repository. When using `gh`,
 select its credentials per command rather than changing the default work account.
+
+Shared native primitives come from HamishNativeLibrary. Read Docs/NativeLibrary.md before replacing file,
+JSON, clipboard or pairing-Keychain helpers. Keep the existing app-specific data paths, encodings and
+isolation rules; improve shared primitives in the library rather than duplicating them here.

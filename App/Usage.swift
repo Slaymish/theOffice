@@ -1,4 +1,5 @@
 import Foundation
+import NativeCore
 import Observation
 import OfficeCore
 import SwiftUI
@@ -22,7 +23,7 @@ final class UsageStore {
 
     private init() {
         if let data = UserDefaults.app.data(forKey: key) {
-            readings = (try? JSONDecoder().decode([String: Reading].self, from: data)) ?? [:]
+            readings = (try? NativeJSON.decode([String: Reading].self, from: data, dates: .deferredToDate)) ?? [:]
         }
     }
 
@@ -49,7 +50,7 @@ final class UsageStore {
         // An observed write re-renders every reader even when nothing changed, and this runs on every rate-limit event.
         if noLimits.contains(id) { noLimits.remove(id) }
         if errors[id] != nil { errors[id] = nil }
-        if persist, let data = try? JSONEncoder().encode(readings) { UserDefaults.app.set(data, forKey: key) }
+        if persist, let data = try? NativeJSON.encode(readings, dates: .deferredToDate, formatting: []) { UserDefaults.app.set(data, forKey: key) }
     }
 
     func refresh(_ directories: [URL?]) {

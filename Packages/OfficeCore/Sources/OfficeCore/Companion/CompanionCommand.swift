@@ -1,4 +1,5 @@
 import Foundation
+import NativeCore
 
 /// Something the phone asks the Mac to do. The Mac decides whether it still makes sense when it arrives.
 public struct CompanionCommand: Codable, Sendable, Equatable, Identifiable {
@@ -87,15 +88,10 @@ public struct CommandGate: Sendable {
 
 public enum CompanionCoding {
     public static var encoder: JSONEncoder {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = .sortedKeys
-        return encoder
+        NativeJSON.encoder(formatting: .sortedKeys)
     }
 
     public static var decoder: JSONDecoder {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return decoder
+        NativeJSON.decoder()
     }
 }

@@ -1,3 +1,4 @@
+import NativeCore
 #if os(macOS)
 import AppKit
 #else
@@ -103,8 +104,7 @@ final class BrandStore {
     }
 
     static var customFolder: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("The City/Brands")
+        (try! AppDirectories.applicationSupportURL(appID: "The City")).appendingPathComponent("Brands")
     }
 
     private init() {
@@ -147,7 +147,7 @@ final class BrandStore {
 
     private static func read(_ folder: URL) -> Brand? {
         guard let data = try? Data(contentsOf: folder.appendingPathComponent("brand.json")),
-              var brand = try? JSONDecoder().decode(Brand.self, from: data) else { return nil }
+              var brand = try? NativeJSON.decode(Brand.self, from: data, dates: .deferredToDate) else { return nil }
         brand.folder = folder
         return brand
     }

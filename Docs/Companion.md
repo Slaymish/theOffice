@@ -74,11 +74,14 @@ With that, the Mac writes the snapshot every few seconds while things change, an
 - The link key in the QR code is the only shared secret. It signs every command and, through a derived key, is the TLS pre-shared key on the local network. Anyone who photographs the code can pair, so Settings says to show it only to your own phone. Pair Again makes a new key and unpairs every phone.
 - Commands can't widen what a floor may do: there's no "always allow" and no change of permission mode from the phone.
 - A command older than 15 minutes is refused, so a job queued while the Mac slept doesn't start hours later.
-- Snapshots carry prompts, captions and question text, clipped, but never transcripts or tool input beyond an approval's summary.
+- Snapshots carry prompts, captions and question summaries, plus portable configuration and the Mac's retained job journal. Treat the pairing code as access to that personal information. Raw CLI logs, credentials and local repository paths stay on the Mac.
 
-## Not verified yet
+## Verification
 
-This was written without Xcode, so none of the Swift outside OfficeCore has been compiled. OfficeCore's companion code is covered by `CompanionTests` and runs on Linux. Expect a round of compile fixes on first build, especially in `Shared/Link/LocalLink.swift` (the TLS-PSK calls) and the SwiftUI in `Companion/`.
+The October 2026 shared-library integration passed 184 OfficeCore tests, 96 hosted Mac tests,
+and Mac/iOS simulator builds. The library also tests authenticated loopback transport and rejection
+of a wrong pairing key. Physical iPhone pairing, permission prompts, background/foreground and Mac
+sleep/wake still need device testing before release; compilation and loopback do not verify those experiences.
 
 ## Sizes and timings
 
